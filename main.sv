@@ -7,49 +7,12 @@ module main(
 	);
 
 	wire clk24,clk60,clk480,clk_usb_lock,reset;
-	Gowin_PLL Gowin_PLL(
-	    .clkout0(clk24), //output clkout0
-	    .clkin(clkin) //input clkin
-	);
-	usb_PLL usb_PLL(
-	    .clkout0(clk480), //output clkout0
-	    .clkout1(clk60), //output clkout1
-	    .lock(clk_usb_lock), //output lock
-	    .clkin(clk24) //input clkin
-	);
-	assign reset = ~clk_usb_lock;
-
 	wire [7:0]  phy_datain    ;
 	wire [7:0]  phy_dataout   ;
 	wire [1:0]  phy_xcvrselect ;
 	wire [1:0]  phy_opmode ;
 	wire [1:0]  phy_linestate ;
 	wire phy_termselect,phy_txvalid,phy_txready,phy_rxvalid,phy_rxactive,phy_rxerror,phy_clkout;
-	USB2_0_SoftPHY_Top USB2_0_SoftPHY_Top(
-		.clk_i(clk60), //input clk_i
-		.rst_i(reset), //input rst_i
-		.fclk_i(clk480), //input fclk_i
-		.pll_locked_i(clk_usb_lock), //input pll_locked_i
-		.utmi_data_out_i(phy_dataout), //input [7:0] utmi_data_out_i
-		.utmi_txvalid_i(phy_txvalid), //input utmi_txvalid_i
-		.utmi_op_mode_i(phy_opmode), //input [1:0] utmi_op_mode_i
-		.utmi_xcvrselect_i(phy_xcvrselect), //input [1:0] utmi_xcvrselect_i
-		.utmi_termselect_i(phy_termselect), //input utmi_termselect_i
-		.utmi_data_in_o(phy_data_in), //output [7:0] utmi_data_in_o
-		.utmi_txready_o(phy_txready), //output utmi_txready_o
-		.utmi_rxvalid_o(phy_rxvalid), //output utmi_rxvalid_o
-		.utmi_rxactive_o(phy_rxactive), //output utmi_rxactive_o
-		.utmi_rxerror_o(phy_rxerror), //output utmi_rxerror_o
-		.utmi_linestate_o(phy_linestate), //output [1:0] utmi_linestate_o
-		.usb_dxp_io(usb_dxp_io), //inout usb_dxp_io
-		.usb_dxn_io(usb_dxn_io), //inout usb_dxn_io
-		.usb_rxdp_i(usb_rxdp_i), //input usb_rxdp_i
-		.usb_rxdn_i(usb_rxdn_i), //input usb_rxdn_i
-		.usb_pullup_en_o(usb_pullup_en_o), //output usb_pullup_en_o
-		.usb_term_dp_io(usb_term_dp_io), //inout usb_term_dp_io
-		.usb_term_dn_io(usb_term_dn_io) //inout usb_term_dn_io
-	);
-
 	wire usbrst_o,highspeed_o,suspend_o,online_o,sof_o;
 	wire txact_o,txpop_o,rxact_o,rxval_o;
 	wire [3:0]endpt_o;
@@ -80,11 +43,44 @@ module main(
 	wire [15:0] desc_strserial_addr_i;
 	wire [15:0] desc_strserial_len_i;
 	wire desc_have_strings_i;
+	Gowin_PLL Gowin_PLL(
+	    .clkout0(clk24), //output clkout0
+	    .clkin(clkin) //input clkin
+	);
+	usb_PLL usb_PLL(
+	    .clkout0(clk480), //output clkout0
+	    .clkout1(clk60), //output clkout1
+	    .lock(clk_usb_lock), //output lock
+	    .clkin(clk24) //input clkin
+	);
+	assign reset = ~clk_usb_lock;
+
+wire [7:0]  inf_alter_i;
+wire [7:0]  inf_alter_o;
+reg [7:0] inf1_alter,inf0_alter = 'b0;
+assign inf_alter_i = (inf_sel_o == 0) ? inf0_alter :
+                     (inf_sel_o == 1) ? inf1_alter : 8'd0;
+always@(posedge clk60, posedge reset) begin
+    if (reset) begin
+        inf0_alter <= 'd0;
+        inf1_alter <= 'd0;
+    end
+    else begin
+        if (inf_set_o) begin
+            if (inf_sel_o == 0) begin
+                inf0_alter <= inf_alter_o;
+            end
+            else if (inf_sel_o == 1) begin
+                inf1_alter <= inf_alter_o;
+            end
+        end
+    end
+end
 
 	USB_Device_Controller_Top USB_Device_Controller_Top(
 		.clk_i(clk60), //input clk_i
 		.reset_i(reset), //input reset_i
-//		.usbrst_o(usbrst), //output usbrst_o
+		.usbrst_o(usbrst), //output usbrst_o
 		.highspeed_o(highspeed_o), //output highspeed_o
 		.suspend_o(suspend_o), //output suspend_o
 		.online_o(online_o), //output online_o
@@ -121,10 +117,14 @@ module main(
 		.desc_hscfg_addr_i(desc_hscfg_addr_i), //input [15:0] desc_hscfg_addr_i
 		.desc_hscfg_len_i(desc_hscfg_len_i), //input [15:0] desc_hscfg_len_i
 		.desc_oscfg_addr_i(desc_oscfg_addr_i), //input [15:0] desc_oscfg_addr_i
-		.desc_hidrpt_addr_i(desc_hidrpt_addr_i), //input [15:0] desc_hidrpt_addr_i
-		.desc_hidrpt_len_i(desc_hidrpt_len_i), //input [15:0] desc_hidrpt_len_i
-		.desc_bos_addr_i(desc_bos_addr_i), //input [15:0] desc_bos_addr_i
-		.desc_bos_len_i(desc_bos_len_i), //input [15:0] desc_bos_len_i
+		.desc_hidrpt_addr_i(16'd0), //input [15:0] desc_hidrpt_addr_i
+		.desc_hidrpt_len_i(16'd0), //input [15:0] desc_hidrpt_len_i
+		.desc_bos_addr_i(16'd0), //input [15:0] desc_bos_addr_i
+		.desc_bos_len_i(16'd0), //input [15:0] desc_bos_len_i
+//		.desc_hidrpt_addr_i(desc_hidrpt_addr_i), //input [15:0] desc_hidrpt_addr_i
+//		.desc_hidrpt_len_i(desc_hidrpt_len_i), //input [15:0] desc_hidrpt_len_i
+//		.desc_bos_addr_i(desc_bos_addr_i), //input [15:0] desc_bos_addr_i
+//		.desc_bos_len_i(desc_bos_len_i), //input [15:0] desc_bos_len_i
 		.desc_strlang_addr_i(desc_strlang_addr_i), //input [15:0] desc_strlang_addr_i
 		.desc_strvendor_addr_i(desc_strvendor_addr_i), //input [15:0] desc_strvendor_addr_i
 		.desc_strvendor_len_i(desc_strvendor_len_i), //input [15:0] desc_strvendor_len_i
@@ -146,32 +146,90 @@ module main(
 		.utmi_termselect_o(phy_termselect), //output utmi_termselect_o
 		.utmi_reset_o(phy_reset) //output utmi_reset_o
 	);
-	usb_desc usb_desc (
-		.descrom_raddr_o       (descrom_raddr_o),
-		.descrom_rdata_i       (descrom_rdata_i),
-		.desc_dev_addr_i       (desc_dev_addr_i),
-		.desc_dev_len_i        (desc_dev_len_i),
-		.desc_qual_addr_i      (desc_qual_addr_i),
-		.desc_qual_len_i       (desc_qual_len_i),
-		.desc_fscfg_addr_i     (desc_fscfg_addr_i),
-		.desc_fscfg_len_i      (desc_fscfg_len_i),
-		.desc_hscfg_addr_i     (desc_hscfg_addr_i),
-		.desc_hscfg_len_i      (desc_hscfg_len_i),
-		.desc_oscfg_addr_i     (desc_oscfg_addr_i),
-		.desc_hidrpt_addr_i    (desc_hidrpt_addr_i),
-		.desc_hidrpt_len_i     (desc_hidrpt_len_i),
-		.desc_bos_addr_i       (desc_bos_addr_i),
-		.desc_bos_len_i        (desc_bos_len_i),
-		.desc_strlang_addr_i   (desc_strlang_addr_i),
-		.desc_strvendor_addr_i (desc_strvendor_addr_i),
-		.desc_strvendor_len_i  (desc_strvendor_len_i),
-		.desc_strproduct_addr_i(desc_strproduct_addr_i),
-		.desc_strproduct_len_i (desc_strproduct_len_i),
-		.desc_strserial_addr_i (desc_strserial_addr_i),
-		.desc_strserial_len_i  (desc_strserial_len_i),
-		.desc_have_strings_i   (desc_have_strings_i)
+usb_desc
+#(
+
+     .VENDORID    (16'h33AA)
+    ,.PRODUCTID   (16'h0000)
+    ,.VERSIONBCD  (16'h0100)
+    ,.HSSUPPORT   (1       )
+    ,.SELFPOWERED (1       )
+)
+u_usb_desc (
+    .CLK                    (clk60),
+    .RESET                  (reset),
+    .i_pid                  (16'd0),
+    .i_vid                  (16'd0),
+    .i_descrom_raddr        (descrom_raddr_o),
+    .o_descrom_rdat         (descrom_rdata_i),
+    .o_desc_dev_addr        (desc_dev_addr_i),
+    .o_desc_dev_len         (desc_dev_len_i),
+    .o_desc_qual_addr       (desc_qual_addr_i),
+    .o_desc_qual_len        (desc_qual_len_i),
+    .o_desc_fscfg_addr      (desc_fscfg_addr_i),
+    .o_desc_fscfg_len       (desc_fscfg_len_i),
+    .o_desc_hscfg_addr      (desc_hscfg_addr_i),
+    .o_desc_hscfg_len       (desc_hscfg_len_i),
+    .o_desc_oscfg_addr      (desc_oscfg_addr_i),
+    .o_desc_strlang_addr    (desc_strlang_addr_i),
+    .o_desc_strvendor_addr  (desc_strvendor_addr_i),
+    .o_desc_strvendor_len   (desc_strvendor_len_i),
+    .o_desc_strproduct_addr (desc_strproduct_addr_i),
+    .o_desc_strproduct_len  (desc_strproduct_len_i),
+    .o_desc_strserial_addr  (desc_strserial_addr_i),
+    .o_desc_strserial_len   (desc_strserial_len_i),
+    .o_descrom_have_strings (desc_have_strings_i)
+);
+	USB2_0_SoftPHY_Top USB2_0_SoftPHY_Top(
+		.clk_i(clk60), //input clk_i
+		.rst_i(reset), //input rst_i
+		.fclk_i(clk480), //input fclk_i
+		.pll_locked_i(clk_usb_lock), //input pll_locked_i
+		.utmi_data_out_i(phy_dataout), //input [7:0] utmi_data_out_i
+		.utmi_txvalid_i(phy_txvalid), //input utmi_txvalid_i
+		.utmi_op_mode_i(phy_opmode), //input [1:0] utmi_op_mode_i
+		.utmi_xcvrselect_i(phy_xcvrselect), //input [1:0] utmi_xcvrselect_i
+		.utmi_termselect_i(phy_termselect), //input utmi_termselect_i
+		.utmi_data_in_o(phy_data_in), //output [7:0] utmi_data_in_o
+		.utmi_txready_o(phy_txready), //output utmi_txready_o
+		.utmi_rxvalid_o(phy_rxvalid), //output utmi_rxvalid_o
+		.utmi_rxactive_o(phy_rxactive), //output utmi_rxactive_o
+		.utmi_rxerror_o(phy_rxerror), //output utmi_rxerror_o
+		.utmi_linestate_o(phy_linestate), //output [1:0] utmi_linestate_o
+		.usb_dxp_io(usb_dxp_io), //inout usb_dxp_io
+		.usb_dxn_io(usb_dxn_io), //inout usb_dxn_io
+		.usb_rxdp_i(usb_rxdp_i), //input usb_rxdp_i
+		.usb_rxdn_i(usb_rxdn_i), //input usb_rxdn_i
+		.usb_pullup_en_o(usb_pullup_en_o), //output usb_pullup_en_o
+		.usb_term_dp_io(usb_term_dp_io), //inout usb_term_dp_io
+		.usb_term_dn_io(usb_term_dn_io) //inout usb_term_dn_io
 	);
-	usbrxtx usbrxtx(
+//	usb_desc usb_desc (
+//		.descrom_raddr_o       (descrom_raddr_o),
+//		.descrom_rdata_i       (descrom_rdata_i),
+//		.desc_dev_addr_i       (desc_dev_addr_i),
+//		.desc_dev_len_i        (desc_dev_len_i),
+//		.desc_qual_addr_i      (desc_qual_addr_i),
+//		.desc_qual_len_i       (desc_qual_len_i),
+//		.desc_fscfg_addr_i     (desc_fscfg_addr_i),
+//		.desc_fscfg_len_i      (desc_fscfg_len_i),
+//		.desc_hscfg_addr_i     (desc_hscfg_addr_i),
+//		.desc_hscfg_len_i      (desc_hscfg_len_i),
+//		.desc_oscfg_addr_i     (desc_oscfg_addr_i),
+//		.desc_hidrpt_addr_i    (desc_hidrpt_addr_i),
+//		.desc_hidrpt_len_i     (desc_hidrpt_len_i),
+//		.desc_bos_addr_i       (desc_bos_addr_i),
+//		.desc_bos_len_i        (desc_bos_len_i),
+//		.desc_strlang_addr_i   (desc_strlang_addr_i),
+//		.desc_strvendor_addr_i (desc_strvendor_addr_i),
+//		.desc_strvendor_len_i  (desc_strvendor_len_i),
+//		.desc_strproduct_addr_i(desc_strproduct_addr_i),
+//		.desc_strproduct_len_i (desc_strproduct_len_i),
+//		.desc_strserial_addr_i (desc_strserial_addr_i),
+//		.desc_strserial_len_i  (desc_strserial_len_i),
+//		.desc_have_strings_i   (desc_have_strings_i)
+//	);
+//	usbrxtx usbrxtx(
 //		.clk        (clk60),
 //		.txact_o    (txact_o),
 //		.txpop_o    (txpop_o),
@@ -187,16 +245,16 @@ module main(
 //		.txpktfin_o (txpktfin_o),
 //		.rxpktval_o (rxpktval_o),
 //		.setup_o    (setup_o)
-	);
+//	);
 
-	reg [7:0] inf1_alter,inf0_alter = 'b0;
-	always @(posedge clk60)begin
-		if(inf_set_o)begin
-			case(inf_sel_o)
-				1'b0: inf0_alter <= inf_alter_o;
-				1'b1: inf1_alter <= inf_alter_o;
-			endcase
-		end
-	end
-	assign inf_alter_i = inf_sel_o?inf1_alter:inf0_alter;
+//	reg [7:0] inf1_alter,inf0_alter = 'b0;
+//	always @(posedge clk60)begin
+//		if(inf_set_o)begin
+//			case(inf_sel_o)
+//				1'b0: inf0_alter <= inf_alter_o;
+//				1'b1: inf1_alter <= inf_alter_o;
+//			endcase
+//		end
+//	end
+//	assign inf_alter_i = inf_sel_o?inf1_alter:inf0_alter;
 endmodule
