@@ -1,6 +1,5 @@
 module main(
     input      CLK_IN,
-    output reg     LED,
     inout      usb_dxp_io     ,
     inout      usb_dxn_io     ,
     input      usb_rxdp_i     ,
@@ -10,8 +9,6 @@ module main(
     inout      usb_term_dn_io
 
 );
-
-//localparam ENDPT_UART_CONFIG = 4'd0;
 
 wire [1:0]  PHY_XCVRSELECT      ;
 wire        PHY_TERMSELECT      ;
@@ -122,25 +119,14 @@ wire CLK24M;
         .clkin(CLK24M) //input clkin
     );
 assign RESET = ~pll_locked;
-//==============================================================
-//======Interface Setting
-assign inf_alter_i = (inf_sel_o == 0) ? interface0_alter :
-                     (inf_sel_o == 1) ? interface1_alter : 8'd0;
-always@(posedge PHY_CLKOUT, posedge RESET   ) begin
-    if (RESET) begin
-        interface0_alter <= 'd0;
-        interface1_alter <= 'd0;
-    end
-    else begin
+assign inf_alter_i = inf_sel_o ? interface1_alter : interface0_alter;
+always@(posedge PHY_CLKOUT) begin
         if (inf_set_o) begin
-            if (inf_sel_o == 0) begin
-                interface0_alter <= inf_alter_o;
-            end
-            else if (inf_sel_o == 1) begin
-                interface1_alter <= inf_alter_o;
-            end
+		case(inf_sel_o)
+			0:interface0_alter <= inf_alter_o;
+			1:interface1_alter <= inf_alter_o;
+		endcase
         end
-    end
 end
 //==============================================================
 //======Device Controller
@@ -184,10 +170,10 @@ USB_Device_Controller_Top u_usb_device_controller_top (
     ,.desc_hscfg_addr_i     (DESC_HSCFG_ADDR     )
     ,.desc_hscfg_len_i      (DESC_HSCFG_LEN      )
     ,.desc_oscfg_addr_i     (DESC_OSCFG_ADDR     )
-    ,.desc_hidrpt_addr_i    (16'd0               )//DESC_HIDRPT_ADDR
-    ,.desc_hidrpt_len_i     (16'd0               )//DESC_HIDRPT_LEN
-    ,.desc_bos_addr_i       (16'd0               )//DESC_BOS_ADDR
-    ,.desc_bos_len_i        (16'd0               )//DESC_BOS_LEN
+    ,.desc_hidrpt_addr_i    (DESC_HIDRPT_ADDR    )
+    ,.desc_hidrpt_len_i     (DESC_HIDRPT_LEN     )
+    ,.desc_bos_addr_i       (DESC_BOS_ADDR       )
+    ,.desc_bos_len_i        (DESC_BOS_LEN        )
     ,.desc_strlang_addr_i   (DESC_STRLANG_ADDR   )
     ,.desc_strvendor_addr_i (DESC_STRVENDOR_ADDR )
     ,.desc_strvendor_len_i  (DESC_STRVENDOR_LEN  )
@@ -211,45 +197,32 @@ USB_Device_Controller_Top u_usb_device_controller_top (
     ,.utmi_reset_o          (PHY_RESET         )
 );
 
-//==============================================================
-//======USB Device descriptor Demo
-usb_desc
-#(
-
-     .VENDORID    (16'h33AA)
-    ,.PRODUCTID   (16'h0000)
-    ,.VERSIONBCD  (16'h0100)
-    ,.HSSUPPORT   (1       )
-    ,.SELFPOWERED (1       )
-)
-u_usb_desc (
-     .CLK                    (PHY_CLKOUT          )
-    ,.RESET                  (RESET               )
-    ,.i_pid                  (16'd0               )
-    ,.i_vid                  (16'd0               )
-    ,.i_descrom_raddr        (DESCROM_RADDR       )
-    ,.o_descrom_rdat         (DESCROM_RDAT        )
-    ,.o_desc_dev_addr        (DESC_DEV_ADDR       )
-    ,.o_desc_dev_len         (DESC_DEV_LEN        )
-    ,.o_desc_qual_addr       (DESC_QUAL_ADDR      )
-    ,.o_desc_qual_len        (DESC_QUAL_LEN       )
-    ,.o_desc_fscfg_addr      (DESC_FSCFG_ADDR     )
-    ,.o_desc_fscfg_len       (DESC_FSCFG_LEN      )
-    ,.o_desc_hscfg_addr      (DESC_HSCFG_ADDR     )
-    ,.o_desc_hscfg_len       (DESC_HSCFG_LEN      )
-    ,.o_desc_oscfg_addr      (DESC_OSCFG_ADDR     )
-    ,.o_desc_strlang_addr    (DESC_STRLANG_ADDR   )
-    ,.o_desc_strvendor_addr  (DESC_STRVENDOR_ADDR )
-    ,.o_desc_strvendor_len   (DESC_STRVENDOR_LEN  )
-    ,.o_desc_strproduct_addr (DESC_STRPRODUCT_ADDR)
-    ,.o_desc_strproduct_len  (DESC_STRPRODUCT_LEN )
-    ,.o_desc_strserial_addr  (DESC_STRSERIAL_ADDR )
-    ,.o_desc_strserial_len   (DESC_STRSERIAL_LEN  )
-    ,.o_descrom_have_strings (DESCROM_HAVE_STRINGS)
+usb_desc usb_desc (
+	.descrom_raddr_o       (DESCROM_RADDR       )
+	,.descrom_rdata_i       (DESCROM_RDAT        )
+	,.desc_dev_addr_i       (DESC_DEV_ADDR       )
+	,.desc_dev_len_i        (DESC_DEV_LEN        )
+	,.desc_qual_addr_i      (DESC_QUAL_ADDR      )
+	,.desc_qual_len_i       (DESC_QUAL_LEN       )
+	,.desc_fscfg_addr_i     (DESC_FSCFG_ADDR     )
+	,.desc_fscfg_len_i      (DESC_FSCFG_LEN      )
+	,.desc_hscfg_addr_i     (DESC_HSCFG_ADDR     )
+	,.desc_hscfg_len_i      (DESC_HSCFG_LEN      )
+	,.desc_oscfg_addr_i     (DESC_OSCFG_ADDR     )
+	,.desc_hidrpt_addr_i    (DESC_HIDRPT_ADDR    )
+	,.desc_hidrpt_len_i     (DESC_HIDRPT_LEN     )
+	,.desc_bos_addr_i       (DESC_BOS_ADDR       )
+	,.desc_bos_len_i        (DESC_BOS_LEN        )
+	,.desc_strlang_addr_i   (DESC_STRLANG_ADDR   )
+	,.desc_strvendor_addr_i (DESC_STRVENDOR_ADDR )
+	,.desc_strvendor_len_i  (DESC_STRVENDOR_LEN  )
+	,.desc_strproduct_addr_i(DESC_STRPRODUCT_ADDR)
+	,.desc_strproduct_len_i (DESC_STRPRODUCT_LEN )
+	,.desc_strserial_addr_i (DESC_STRSERIAL_ADDR )
+	,.desc_strserial_len_i  (DESC_STRSERIAL_LEN  )
+	,.desc_have_strings_i   (DESCROM_HAVE_STRINGS)
 );
 
-//==============================================================
-//======USB SoftPHY
 USB2_0_SoftPHY_Top u_USB_SoftPHY_Top
 (
      .clk_i            (PHY_CLKOUT     )
