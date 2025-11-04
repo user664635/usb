@@ -54,6 +54,7 @@ wire [11:0] usb_txdat_len;
 wire        usb_txcork;
 wire        usb_txpop;
 wire        usb_txact;
+wire	    usb_txval;
 wire [7:0]  usb_rxdat;
 wire        usb_rxval;
 wire        usb_rxpktval;
@@ -128,8 +129,20 @@ always@(posedge PHY_CLKOUT) begin
 		endcase
         end
 end
-//==============================================================
-//======Device Controller
+uart uart(
+	.clk       (PHY_CLKOUT)
+	,.txact    (usb_txact    )
+	,.txpop    (usb_txpop    )
+	,.endpt    (usb_endpt    )  
+	,.txval    (usb_txval    )
+	,.txcork   (usb_txcork   )
+	,.txdat    (usb_txdat    ) 
+	,.txdat_len(usb_txdat_len)
+	,.rxact    (usb_rxact    )
+	,.rxval    (usb_rxval    )    
+	,.rxrdy    (usb_rxrdy    )  
+	,.rxdat    (usb_rxdat    )
+);
 USB_Device_Controller_Top u_usb_device_controller_top (
      .clk_i                 (PHY_CLKOUT          )
     ,.reset_i               (RESET               )
