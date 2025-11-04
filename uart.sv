@@ -10,12 +10,13 @@ module uart(
 	input reg [7:0]rxdat
 );
 	always@ (negedge clk)begin
-		//if(txact)begin
+		rxrdy <= 1;
+	//	if(rxact)begin
 			txcork <= 0;
-			txdat <= 8'h33;
+			txdat <= 8'h96;
 			txdat_len <= 1;
-		//end
-		//else txdat_len <= 0;
+	//	end
+	//	else txdat_len <= 0;
 		//if(rxact)begin
 		//	rxrdy <= 1;
 		//	txdat <= rxdat;

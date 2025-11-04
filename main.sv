@@ -128,19 +128,19 @@ always@(posedge PHY_CLKOUT) begin
 			1:interface1_alter <= inf_alter_o;
 		endcase
         end
-end
-uart uart(
-	.clk       (PHY_CLKOUT)
-	,.txact    (usb_txact    )
-	,.txpop    (usb_txpop    )
-	,.endpt    (usb_endpt    )  
-	,.txval    (usb_txval    )
-	,.txcork   (usb_txcork   )
-	,.txdat    (usb_txdat    ) 
-	,.txdat_len(usb_txdat_len)
-	,.rxact    (usb_rxact    )
-	,.rxval    (usb_rxval    )    
-	,.rxrdy    (usb_rxrdy    )  
+end							  
+uart u_uart(                                              
+	.clk       (PHY_CLKOUT)                         
+	,.txact    (usb_txact    )                    
+	,.txpop    (usb_txpop    )                    
+	,.endpt    (usb_endpt    )                    
+	,.txval    (usb_txval    )                    
+	,.txcork   (usb_txcork   )                    
+	,.txdat    (usb_txdat    )                    
+	,.txdat_len(usb_txdat_len)                    
+	,.rxact    (usb_rxact    )                    
+	,.rxval    (usb_rxval    )                    
+	,.rxrdy    (usb_rxrdy    )                    
 	,.rxdat    (usb_rxdat    )
 );
 USB_Device_Controller_Top u_usb_device_controller_top (
@@ -151,7 +151,7 @@ USB_Device_Controller_Top u_usb_device_controller_top (
     ,.suspend_o             (usb_suspend         )
     ,.online_o              (usb_online          )
     ,.txdat_i               (usb_txdat           )
-    ,.txval_i               (endpt0_send&(endpt_sel==ENDPT_UART_CONFIG))
+    ,.txval_i               (usb_txval		 )
     ,.txdat_len_i           (usb_txdat_len       )
     ,.txcork_i              (usb_txcork          )
     ,.txiso_pid_i           (4'b0011             )
